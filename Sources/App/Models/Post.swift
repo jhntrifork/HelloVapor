@@ -8,16 +8,19 @@ final class Post: Model {
     // MARK: Properties and database keys
     
     /// The content of the post
+    var userId: String
     var content: String
     
     /// The column names for `id` and `content` in the database
     struct Keys {
         static let id = "id"
+        static let userId = "userId"
         static let content = "content"
     }
 
     /// Creates a new Post
-    init(content: String) {
+    init(userId: String, content: String) {
+        self.userId = userId
         self.content = content
     }
 
@@ -26,12 +29,14 @@ final class Post: Model {
     /// Initializes the Post from the
     /// database row
     init(row: Row) throws {
+        userId = try row.get(Post.Keys.userId)
         content = try row.get(Post.Keys.content)
     }
 
     // Serializes the Post to the database
     func makeRow() throws -> Row {
         var row = Row()
+        try row.set(Post.Keys.userId, userId)
         try row.set(Post.Keys.content, content)
         return row
     }
@@ -45,6 +50,7 @@ extension Post: Preparation {
     static func prepare(_ database: Database) throws {
         try database.create(self) { builder in
             builder.id()
+            builder.string(Post.Keys.userId)
             builder.string(Post.Keys.content)
         }
     }
@@ -65,6 +71,7 @@ extension Post: Preparation {
 extension Post: JSONConvertible {
     convenience init(json: JSON) throws {
         self.init(
+            userId: try json.get(Post.Keys.userId),
             content: try json.get(Post.Keys.content)
         )
     }
@@ -72,6 +79,7 @@ extension Post: JSONConvertible {
     func makeJSON() throws -> JSON {
         var json = JSON()
         try json.set(Post.Keys.id, id)
+        try json.set(Post.Keys.userId, userId)
         try json.set(Post.Keys.content, content)
         return json
     }
@@ -94,6 +102,9 @@ extension Post: Updateable {
         return [
             // If the request contains a String at key "content"
             // the setter callback will be called.
+            UpdateableKey(Post.Keys.userId, String.self) { post, userId in
+                post.userId = userId
+            },
             UpdateableKey(Post.Keys.content, String.self) { post, content in
                 post.content = content
             }
